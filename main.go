@@ -14,23 +14,21 @@ func main() {
 
 	router.GET("/etherPrice", func(c *gin.Context) {
 
-		price, err := getPrice()
-		if err != nil {
-			fmt.Println(err)
-		}
+		price := make(chan string)
+		go getPrice(price)
+
 		c.JSON(http.StatusOK, gin.H{
-			"ETH-USD": "$ " + price,
+			"ETH-USD": "$ " + <-price,
 		})
 	})
 
 	router.Run(":8888")
 }
 
-func getPrice() (string, error) {
+func getPrice(price chan string) {
 	response, err := http.Get("https://api.etherscan.io/api?module=stats&action=ethprice&apikey=YourApiKeyToken")
 	if err != nil {
 		fmt.Println(err)
-		return "", err
 	}
 
 	defer response.Body.Close()
@@ -44,7 +42,6 @@ func getPrice() (string, error) {
 
 	json.Unmarshal([]byte(contents), &result)
 
-	price := result["result"].(map[string]interface{})["ethusd"].(string)
+	price <- result["result"].(map[string]interface{})["ethusd"].(string)
 
-	return price, nil
 }
